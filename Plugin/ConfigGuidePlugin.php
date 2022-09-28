@@ -8,7 +8,7 @@ declare(strict_types = 1);
  * @license See LICENSE for license details.
  */
 
-namespace Asp\ConfigScopeGuide;
+namespace Asp\ConfigScopeGuide\Plugin;
 
 use Magento\Config\Model\Config\Structure\Element\Field;
 
