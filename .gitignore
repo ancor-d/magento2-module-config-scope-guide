@@ -1,1 +1,7 @@
 .idea
+vendor
+app/etc
+.editorconfig
+auth.json
+.phpunit.*
+build

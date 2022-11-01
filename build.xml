@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="Ancor'd Phinx" default="test-ci">
+    <property name="target-path" value="${project.basedir}" description="The target path to analyse - defaults to the entire project." />
+    <property name="phpcs-check-return" value="true" />
+    <property name="phpstan-check-return" value="true" />
+    <property name="buildPath" value="${project.basedir}/build" override="true" />
+    <property name="report-path" value="${buildPath}/reports" override="true" />
+    <property name="compareRef" value="origin/develop" description="Which Git ref to compare HEAD against - defaults to origin/master" />
+    <property name="vendorBin" value="vendor/bin" description="Relative path to the vendor bin directory of the Pipeline sub-project." />
+    <property name="phpcs" value="${vendorBin}/phpcs" description="PHPCS binary" />
+    <property name="phpunit" value="${vendorBin}/phpunit" description="PHPUnit binary" />
+    <property name="lint" value="${vendorBin}/parallel-lint" description="Parallel Lint binary" />
+    <property name="phpmd" value="${vendorBin}/phpmd" description="PHPMD binary" />
+    <property name="phpstan" value="${vendorBin}/phpstan" description="PHPStan binary" />
+
+    <!-- ============================================  -->
+    <!-- Target: test-ci                               -->
+    <!-- ============================================  -->
+    <target name="test-ci" depends="phpcs-ci,phpunit-ci" description="Runs all CI tests except lint.">
+        <condition property="something-failed">
+            <or>
+                <isfailure code="${phpcs-result}" />
+                <isfailure code="${phpmd-result}" />
+                <isfailure code="${phpunit-result}" />
+                <isfailure code="${phpstan-result}" />
+            </or>
+        </condition>
+        <fail if="something-failed" message="One or more code quality tools failed. Check the reports for details."/>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpcs                                 -->
+    <!-- ============================================  -->
+    <target name="phpcs"
+            description="Runs PHPCS against the entire project or the given target-path.">
+        <echo msg="Running PHPCS on ${target-path}. This could take a while..." />
+        <exec executable="${phpcs}" dir="${project.basedir}" passthru="true"
+                checkreturn="${phpcs-check-return}">
+            <arg line="-d memory-limit=-1" />
+            <arg value="--standard=phpcs.xml" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpcs-ci                              -->
+    <!-- ============================================  -->
+    <target name="phpcs-ci" depends="setup-ci"
+            description="Runs PHPCS against the entire project or the given target-path and generates CI reports.">
+        <echo msg="Running PHPCS on ${target-path}. This could take a while..." />
+        <exec executable="${phpcs}" dir="${project.basedir}" passthru="true" returnProperty="phpcs-result"
+                checkreturn="false">
+            <arg line="-d memory-limit=-1" />
+            <arg line="--standard=phpcs.xml" />
+            <arg line="--extensions=php,phtml" />
+            <arg line="--report=checkstyle" />
+            <arg line="--report-file=${report-path}/phpcs-checkstyle.xml" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpstan                               -->
+    <!-- ============================================  -->
+    <target name="phpstan"
+            description="Runs PHPStan against the entire project or the given target-path.">
+        <echo msg="Running PHPStan on ${target-path}. This could take a while..." />
+        <exec executable="${vendorBin}/phpstan" dir="${project.basedir}" passthru="true"
+                checkreturn="${phpstan-check-return}">
+            <arg value="--memory-limit=-1"/>
+            <arg value="analyse" />
+            <arg path="${target-path}" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpstan-generate-baseline             -->
+    <!-- ============================================  -->
+    <target name="phpstan-generate-baseline"
+            description="Generates a PHPStan baseline file and saves it at the project root.">
+        <property name="baselineFile" value="phpstan-baseline.neon"
+            description="Path to the generated baseline file, relative to project.basedir" />
+        <echo message="Running PHPStan against the entire project and saving errors to baseline. This could take a while..." />
+        <exec executable="${vendorBin}/phpstan" dir="${project.basedir}" passthru="true">
+            <arg value="--memory-limit=-1" />
+            <arg value="analyse" />
+            <arg value="--generate-baseline=${baselineFile}" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpunit                               -->
+    <!-- ============================================  -->
+    <target name="phpunit"
+            description="Runs all unit tests using the root PHPUnit configuration file.">
+        <echo msg="Running all PHPUnit tests..." />
+        <exec executable="${vendorBin}/phpunit" dir="${project.basedir}" passthru="true" />
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpunit-ci                            -->
+    <!-- ============================================  -->
+    <target name="phpunit-ci" depends="setup-ci"
+            description="Runs all unit tests using the root PHPUnit configuration file and outputs a report.">
+        <exec executable="${vendorBin}/phpunit" dir="${project.basedir}" passthru="true" checkreturn="false" returnProperty="phpunit-result">
+            <arg value="--coverage-clover=build/reports/phpunit-clover.xml" />
+            <arg value="--log-junit=build/reports/phpunit-junit.xml" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: lint-ci                               -->
+    <!-- ============================================  -->
+    <target name="lint-ci" depends="setup-ci"
+            description="Runs all PHPLint tests and outputs a report.">
+        <exec executable="${lint}" dir="${project.basedir}" passthru="true" checkreturn="false" returnProperty="lint-result"
+                output="build/reports/parallel_lint-checkstyle.xml">
+            <arg value="--checkstyle" />
+            <arg path="app/code" />
+            <arg path="app/design" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpmd-ci                              -->
+    <!-- ============================================  -->
+    <target name="phpmd-ci" depends="setup-ci"
+            description="Runs PHPMD tests and outputs a report.">
+        <exec executable="${phpmd}" dir="${project.basedir}" passthru="true" checkreturn="false" returnProperty="phpmd-result">
+            <arg line="app/code,app/design" />
+            <arg path="checkstyle" />
+            <arg path="dev/tests/static/testsuite/Magento/Test/Php/_files/phpmd/ruleset.xml" />
+            <arg line="--reportfile build/reports/phpmd-checkstyle.xml" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: phpstan-ci                            -->
+    <!-- ============================================  -->
+    <target name="phpstan-ci" depends="setup-ci"
+            description="Runs PHPStan tests and outputs a report.">
+        <exec executable="${phpstan}" dir="${project.basedir}" passthru="true" checkreturn="false" returnProperty="phpstan-result"
+                output="build/reports/phpstan-checkstyle.xml">
+            <arg value="analyse" />
+            <arg value="--no-progress" />
+            <arg value="--memory-limit=-1" />
+            <arg value="--error-format=checkstyle" />
+        </exec>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: setup-ci                              -->
+    <!-- ============================================  -->
+    <target name="setup-ci" hidden="true">
+        <mkdir dir="${buildPath}" />
+        <mkdir dir="${report-path}" />
+    </target>
+</project>

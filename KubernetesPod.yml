@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: magento
+      image: 'markoshust/magento-php:8.1-fpm'
+      tty: true
+      command:
+        - cat
