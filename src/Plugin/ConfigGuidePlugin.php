@@ -20,8 +20,8 @@ class ConfigGuidePlugin
      *
      * @param Field $subject
      * @param string $comment
-     *
      * @return string
+     * @see \Magento\Config\Model\Config\Structure\Element\Field::getComment()
      */
     public function afterGetComment(Field $subject, string $comment): string
     {
