@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types = 1);
 
 /**
@@ -12,9 +13,6 @@ namespace Asp\ConfigScopeGuide\Plugin;
 
 use Magento\Config\Model\Config\Structure\Element\Field;
 
-/**
- * Class ConfigGuidePlugin
- */
 class ConfigGuidePlugin
 {
     /**
